@@ -1,3 +1,4 @@
+import calendar
 import datetime
 
 import openmeteo_requests
@@ -10,21 +11,32 @@ import config
 
 openmeteo = openmeteo_requests.Client()
 
+params = {
+        "latitude": config.LATITUDE,
+        "longitude": config.LONGITUDE,
+        "hourly": ["shortwave_radiation", "direct_normal_irradiance", "diffuse_radiation", "temperature_2m",
+                   "wind_speed_10m"],
+        "timezone": config.TIMEZONE,
+        "wind_speed_unit": "ms",
+    }
+
 # get forecast for tomorrow for local timezone (timestamps will be in utc, reflecting 2h shift)
-tomorrow = datetime.datetime.now().date() + datetime.timedelta(days=1)
+if config.PERIOD[0] == 'tomorrow':
+    tomorrow = datetime.datetime.now().date() + datetime.timedelta(days=1)
+    params['start_date'] = tomorrow
+    params['end_date'] = tomorrow
+elif config.PERIOD[0] == 'month':
+    month = config.PERIOD[1]
+    start_of_month = datetime.datetime.now().date().replace(day=1, month=month)
+    params['start_date'] = start_of_month
+    _, last_day = calendar.monthrange(start_of_month.year, start_of_month.month)
+    end_of_month = start_of_month.replace(day=last_day, month=month)
+    params['end_date'] = end_of_month
+
 url = config.WEATHER_API_URL
 location = pvlib.location.Location(latitude=config.LATITUDE, longitude=config.LONGITUDE,
 									   tz=config.TIMEZONE, altitude=166)
 
-params = {
-	"latitude": config.LATITUDE,
-	"longitude": config.LONGITUDE,
-    "start_date": tomorrow,
-    "end_date": tomorrow,
-	"hourly": ["shortwave_radiation", "direct_normal_irradiance", "diffuse_radiation", "temperature_2m", "wind_speed_10m"],
-	"timezone": config.TIMEZONE,
-	"wind_speed_unit": "ms",
-}
 responses = openmeteo.weather_api(url, params=params)
 
 response = responses[0]
@@ -48,7 +60,6 @@ local_timestamps = pd.DatetimeIndex(utc_timestamps).tz_convert("Europe/Warsaw").
 pvlib_input_df = pd.DataFrame(index=pd.Index(data=local_timestamps, name="datetime"))
 
 extracted_variables = extract_weather_hourly_variables_by_name(hourly)
-print(extracted_variables)
 
 pvlib_input_df["ghi"] = extracted_variables[Variable.shortwave_radiation].ValuesAsNumpy()
 pvlib_input_df["dni"] = extracted_variables[Variable.direct_normal_irradiance].ValuesAsNumpy()
@@ -59,6 +70,7 @@ pvlib_input_df["wind_speed"] = extracted_variables[Variable.wind_speed].ValuesAs
 panel_power_w = config.PANEL_POWER_WATTS
 number_of_panels = config.NUMBER_OF_PANELS
 total_dc_power = panel_power_w * number_of_panels
+print(f'total_dc_power: {total_dc_power}')
 
 system = pvlib.pvsystem.PVSystem(
     surface_tilt=config.SURFACE_TILT,
@@ -89,7 +101,7 @@ pvlib_input_df['predicted_dc_w'] = mc.results.dc.fillna(0).clip(lower=0)
 pvlib_input_df['predicted_ac_w'] = mc.results.ac.fillna(0).clip(lower=0)
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-	print(pvlib_input_df)
+    print(pvlib_input_df)
 
 total_kwh = pvlib_input_df['predicted_ac_w'].sum() / 1000
-print(f"Total Tomorrow's Expected Yield: {total_kwh:.2f} kWh")
+print(f"Totas Expected Yield For Chosen Period ({config.PERIOD}): {total_kwh:.2f} kWh")
