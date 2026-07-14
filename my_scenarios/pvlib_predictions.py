@@ -34,9 +34,6 @@ print(f"Elevation: {response.Elevation()} m asl")
 print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
 
 hourly = response.Hourly()
-hourly_time = range(hourly.Time(), hourly.TimeEnd(), hourly.Interval())
-hourly_variables = list(map(lambda i: hourly.Variables(i), range(0, hourly.VariablesLength())))
-print(hourly_variables)
 
 # data is returned from 00:00 utc, timestamps are read in utc, need to be aligned
 utc_timestamps = pd.date_range(
