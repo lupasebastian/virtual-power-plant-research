@@ -11,6 +11,7 @@ import config
 
 openmeteo = openmeteo_requests.Client()
 
+# TODO maybe add another forecast model and average results?
 params = {
         "latitude": config.LATITUDE,
         "longitude": config.LONGITUDE,
@@ -67,6 +68,7 @@ pvlib_input_df["dhi"] = extracted_variables[Variable.diffuse_radiation].ValuesAs
 pvlib_input_df["temp_air"] = extracted_variables[Variable.temperature].ValuesAsNumpy()
 pvlib_input_df["wind_speed"] = extracted_variables[Variable.wind_speed].ValuesAsNumpy()
 
+# calculate all values in Watts
 panel_power_w = config.PANEL_POWER_WATTS
 number_of_panels = config.NUMBER_OF_PANELS
 total_dc_power = panel_power_w * number_of_panels
@@ -97,11 +99,12 @@ mc = pvlib.modelchain.ModelChain(
 
 mc.run_model(pvlib_input_df)
 
-pvlib_input_df['predicted_dc_w'] = mc.results.dc.fillna(0).clip(lower=0)
-pvlib_input_df['predicted_ac_w'] = mc.results.ac.fillna(0).clip(lower=0)
+# convert predicted output to kW for readability
+pvlib_input_df['predicted_dc_kW'] = pd.Series(mc.results.dc.fillna(0).clip(lower=0) / 1000, dtype='float64')
+pvlib_input_df['predicted_ac_kW'] = pd.Series(mc.results.ac.fillna(0).clip(lower=0) / 1000, dtype='float64')
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
     print(pvlib_input_df)
 
-total_kwh = pvlib_input_df['predicted_ac_w'].sum() / 1000
-print(f"Totas Expected Yield For Chosen Period ({config.PERIOD}): {total_kwh:.2f} kWh")
+total_kwh = pvlib_input_df['predicted_ac_kW'].sum()
+print(f"Total Expected Yield For Chosen Period ({config.PERIOD}): {total_kwh:.2f} kWh")
