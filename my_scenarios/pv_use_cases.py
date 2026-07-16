@@ -1,7 +1,11 @@
+import calendar
+import datetime
+
 import pandas as pd
 
+import config
 from pvlib_predictions import pvlib_input_df
-from utils import fetch_daily_household_demand_by_hour, BatteryStorage
+from utils import fetch_daily_household_demand_by_hour, BatteryStorage, plot_daily_results, plot_monthly_results
 
 
 def run_simulation_no_batteries(pv_generation_data: pd.DataFrame) -> None:
@@ -48,7 +52,20 @@ def run_simulation_one_battery_storage(pv_generation_data: pd.DataFrame):
             if round(hourly_demand, ndigits=2) > round(hourly_output + kW_from_battery, ndigits=2):
                 print(f'demand for {row.Index} not met: demand: {hourly_demand:.2f}, output + battery: {hourly_output + kW_from_battery:.2f}')
         battery.insert_step_into_history(row.Index, battery.state_of_charge, overflow)
-    print(battery.soc_history)
+
+    if config.PERIOD[0] == 'tomorrow':
+        plot_daily_results(
+            day=pvlib_input_df.index[0].strftime('%Y-%m-%d'),
+            index=pvlib_input_df.index,
+            hourly_output=pd.Series(pvlib_input_df['predicted_ac_kW'], index=pvlib_input_df.index),
+            hourly_targets=pd.Series(list(usage_df['hourly_demand_in_kW']), index=pvlib_input_df.index),
+            hourly_overflows=pd.Series(battery.soc_history['overflow'], index=pvlib_input_df.index),
+            hourly_soc=pd.Series(battery.soc_history['soc_at_timestamp'], index=pvlib_input_df.index))
+    elif config.PERIOD[0] == 'month':
+        plot_monthly_results(hourly_output=pd.Series(pvlib_input_df['predicted_ac_kW'], index=pvlib_input_df.index),
+            hourly_targets=pd.Series(list(usage_df['hourly_demand_in_kW']) * calendar.monthrange(datetime.datetime.now().year, config.PERIOD[1])[1], index=pvlib_input_df.index),
+            hourly_overflows=pd.Series(battery.soc_history['overflow'], index=pvlib_input_df.index),
+            hourly_soc=pd.Series(battery.soc_history['soc_at_timestamp'], index=pvlib_input_df.index))
 
 
 def run_one_hour(hour, hourly_demand, hourly_output):

@@ -1,4 +1,7 @@
+import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 
 import config
 
@@ -64,3 +67,79 @@ class BatteryStorage():
             print(f'battery charged with {generation:.2f} kW, up to: {self.state_of_charge:.2f} kW')
         return overflow
 
+def plot_daily_results(day, index, hourly_output, hourly_overflows, hourly_targets, hourly_soc):
+    fig, ax1 = plt.subplots(figsize=(14, 7), dpi=100)
+    ax2 = ax1.twinx()
+
+    x_positions = np.arange(len(index))
+    bar_width = 0.35
+
+    ax1.bar(x_positions - bar_width / 2, hourly_output, bar_width, label='Predicted AC Output (kW)', color='#F1C40F',
+            alpha=0.8)
+    ax1.bar(x_positions + bar_width / 2, hourly_overflows, bar_width, label='Wasted Grid Overflow (kW)',
+            color='#9B59B6',
+            alpha=0.8)
+    ax1.plot(x_positions, hourly_targets, color='#2C3E50', linewidth=2.5, marker='s', markersize=4,
+             label='Hourly Targets / Demand (kW)', zorder=5)
+
+    ax2.plot(x_positions, hourly_soc, color='#2980B9', linewidth=2.5, linestyle='--', marker='o', markersize=5,
+             label='State of Charge (kWh)')
+    ax2.axhline(y=5.0, color='#2980B9', linestyle=':', alpha=0.4, label='Max Battery Cap (5.0 kWh)')
+
+    ax1.set_xlabel(f'Hour of Day ({day})', fontsize=11, labelpad=10)
+    ax1.set_ylabel('Instantaneous Power Rates (kW)', fontsize=11, color='#2C3E50')
+    ax2.set_ylabel('Stored Battery Energy (kWh)', fontsize=11, color='#2980B9')
+
+    ax1.tick_params(axis='y', labelcolor='#2C3E50')
+    ax2.tick_params(axis='y', labelcolor='#2980B9')
+
+    ax1.set_xticks(x_positions)
+    ax1.set_xticklabels([t.strftime('%H:%M') for t in index], rotation=45)
+    ax1.grid(axis='y', linestyle=':', alpha=0.5)
+    ax1.set_ylim(0, 8.0)  # Gives breathing room for the header legend
+    ax2.set_ylim(0, 5.5)
+
+    plt.title('Combined Solar System Simulation Overview (Opole)', fontsize=13, fontweight='bold', pad=15)
+
+    handles_1, labels_1 = ax1.get_legend_handles_labels()
+    handles_2, labels_2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles_1 + handles_2, labels_1 + labels_2, loc='upper left', framealpha=0.95)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_monthly_results(hourly_output, hourly_overflows, hourly_targets, hourly_soc):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 9), sharex=True, dpi=100)
+
+    ax1.fill_between(hourly_output.index, hourly_output, color='#F1C40F', alpha=0.3, label='Predicted AC Output (kW)')
+    ax1.plot(hourly_output.index, hourly_output, color='#D4AC0D', linewidth=1, alpha=0.6)
+
+    ax1.fill_between(hourly_overflows.index, hourly_overflows, color='#9B59B6', alpha=0.3, label='Wasted Grid Overflow (kW)')
+    ax1.plot(hourly_overflows.index, hourly_overflows, color='#8E44AD', linewidth=1, alpha=0.5)
+
+    ax1.plot(hourly_targets.index, hourly_targets, color='#2C3E50', linewidth=1.5, label='Hourly Demand Target (kW)', zorder=5)
+
+    ax1.set_ylabel('Power Flow Rates (kW)', fontsize=11)
+    ax1.set_title('Monthly Energy Performance Overview (Opole)', fontsize=14, fontweight='bold', pad=10)
+    ax1.grid(True, linestyle=':', alpha=0.4)
+    ax1.legend(loc='upper left', framealpha=0.95)
+
+    ax2.plot(hourly_soc.index, hourly_soc, color='#2980B9', linewidth=2, label='State of Charge (kWh)')
+    ax2.fill_between(hourly_soc.index, hourly_soc, color='#2980B9', alpha=0.1)
+    ax2.axhline(y=5.0, color='#C0392B', linestyle=':', linewidth=1.5, alpha=0.7, label='Max Storage Limit (5.0 kWh)')
+
+    ax2.set_ylabel('Battery Storage State (kWh)', fontsize=11)
+    ax2.set_xlabel('Date', fontsize=11, labelpad=10)
+    ax2.grid(True, linestyle=':', alpha=0.4)
+    ax2.legend(loc='upper left', framealpha=0.95)
+    ax2.set_ylim(0, 5.5)
+
+    ax2.xaxis.set_major_locator(mdates.DayLocator(interval=3))
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    ax2.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+
+    plt.xticks(rotation=0, ha='center')
+
+    plt.tight_layout()
+    plt.show()
