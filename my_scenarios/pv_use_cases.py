@@ -36,6 +36,7 @@ def run_simulation_one_battery_storage(pv_generation_data: pd.DataFrame):
         hourly_demand = usage_df.at[row.Index.hour, 'hourly_demand_in_kW']
         hourly_output = row.predicted_ac_kW
         hourly_overproduction, hourly_deficit = run_one_hour(hour=row.Index, hourly_demand=hourly_demand, hourly_output=hourly_output)
+        overflow = 0
         if not hourly_overproduction and not hourly_deficit:
             print('demand met perfectly, never gonna happen')
         elif hourly_overproduction:
@@ -46,7 +47,8 @@ def run_simulation_one_battery_storage(pv_generation_data: pd.DataFrame):
             kW_from_battery = battery.discharge(load=hourly_deficit)
             if round(hourly_demand, ndigits=2) > round(hourly_output + kW_from_battery, ndigits=2):
                 print(f'demand for {row.Index} not met: demand: {hourly_demand:.2f}, output + battery: {hourly_output + kW_from_battery:.2f}')
-        battery.insert_step_into_history(row.Index, battery.state_of_charge)
+        battery.insert_step_into_history(row.Index, battery.state_of_charge, overflow)
+    print(battery.soc_history)
 
 
 def run_one_hour(hour, hourly_demand, hourly_output):

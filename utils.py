@@ -37,8 +37,8 @@ class BatteryStorage():
             columns=['soc_at_timestamp'],
             dtype=float)
 
-    def insert_step_into_history(self, timestamp, value):
-        self.soc_history.loc[timestamp, 'soc_at_timestamp'] = value
+    def insert_step_into_history(self, timestamp, value, overflow):
+        self.soc_history.loc[timestamp, ['soc_at_timestamp', 'overflow']] = [value, overflow]
 
     def discharge(self, load: float) -> float:
         if self.state_of_charge * config.DISCHARGE_EFFICIENCY < load:
