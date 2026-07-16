@@ -28,6 +28,9 @@ def run_simulation_no_batteries(pv_generation_data: pd.DataFrame) -> None:
 
 def run_simulation_one_battery_storage(pv_generation_data: pd.DataFrame):
     battery = BatteryStorage()
+    battery.create_soc_history_frame(start=pv_generation_data.index[0],
+                                     end=pv_generation_data.index[len(pv_generation_data) - 1],
+                                     freq='h')
     usage_df = fetch_daily_household_demand_by_hour()
     for row in pv_generation_data.itertuples():
         hourly_demand = usage_df.at[row.Index.hour, 'hourly_demand_in_kW']
@@ -43,6 +46,7 @@ def run_simulation_one_battery_storage(pv_generation_data: pd.DataFrame):
             kW_from_battery = battery.discharge(load=hourly_deficit)
             if round(hourly_demand, ndigits=2) > round(hourly_output + kW_from_battery, ndigits=2):
                 print(f'demand for {row.Index} not met: demand: {hourly_demand:.2f}, output + battery: {hourly_output + kW_from_battery:.2f}')
+        battery.insert_step_into_history(row.Index, battery.state_of_charge)
 
 
 def run_one_hour(hour, hourly_demand, hourly_output):

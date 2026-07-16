@@ -28,6 +28,17 @@ class BatteryStorage():
     def __init__(self):
         self.capacity: float = config.BATTERY_STORAGE_CAPACITY_KILOWATTS
         self.state_of_charge: float = self.capacity
+        self.soc_history = None
+
+    def create_soc_history_frame(self, start, end, freq):
+        self.soc_history = pd.DataFrame(
+            index=pd.date_range(
+                start=start, end=end, freq=freq),
+            columns=['soc_at_timestamp'],
+            dtype=float)
+
+    def insert_step_into_history(self, timestamp, value):
+        self.soc_history.loc[timestamp, 'soc_at_timestamp'] = value
 
     def discharge(self, load: float) -> float:
         if self.state_of_charge * config.DISCHARGE_EFFICIENCY < load:

@@ -103,8 +103,8 @@ mc.run_model(pvlib_input_df)
 pvlib_input_df['predicted_dc_kW'] = pd.Series(mc.results.dc.fillna(0).clip(lower=0) / 1000, dtype='float64')
 pvlib_input_df['predicted_ac_kW'] = pd.Series(mc.results.ac.fillna(0).clip(lower=0) / 1000, dtype='float64')
 
-with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    print(pvlib_input_df)
+# with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+#     print(pvlib_input_df)
 
 total_kwh = pvlib_input_df['predicted_ac_kW'].sum()
 print(f"Total Expected Yield For Chosen Period ({config.PERIOD}): {total_kwh:.2f} kWh")
